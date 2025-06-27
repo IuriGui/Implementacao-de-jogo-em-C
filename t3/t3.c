@@ -3,6 +3,7 @@
 #include<time.h>
 #include "janela.h"
 #include<stdbool.h>
+#include<string.h>
 
 
 #define LINHA 5
@@ -49,6 +50,17 @@ int tratarLimite(int valor, int limite, int direcao){
     }
     return valor;
 }
+
+bool primeiraLinhaVazia(gameState *game) {
+    for (int col = 0; col < COLUNA; col++) {
+        if (game->board[0][col] != -1) {
+            return false;
+        }
+    }
+    return true;
+}
+
+
 
 //MOVES
 
@@ -148,6 +160,15 @@ void moveCursor(gameState *game, tecla_t tec){
 
 }
 
+
+void limpaLinha(gameState *game){
+    int linha = game->currentPos.y;
+    for(int i = 0; i < COLUNA; i++){
+        game->board[linha][i] = -1;
+    }
+}
+
+
 bool movimentacao(gameState *game){
 
     if(j_tem_tecla()){
@@ -156,6 +177,10 @@ bool movimentacao(gameState *game){
         moveLinhas(game, tec);
         moveColuna(game, tec);
         moveCursor(game, tec);
+        if(j_shift() && tec == T_Q){
+                limpaLinha(game);
+        }
+
 
     }
     return true;
@@ -210,40 +235,22 @@ void seAvancaEtapa(){
 
 
 void colocaNovaCorNaPrimeiraLinha(gameState *game) {
-
-    bool vazia = true;
-    for (int col = 0; col < COLUNA; col++) {
-        if (game->board[0][col] != -1) {
-            vazia = false;
-            break;
-        }
-    }
-
-    if (vazia) {
-        int pos = rand() % COLUNA;
-        int cor = rand() % (4 + game->etapa);
-        game->board[0][pos] = cor;
-    }
+    int pos = rand() % COLUNA;
+    int cor = rand() % (4 + game->etapa + 1);
+    game->board[0][pos] = cor;
 }
-
-void limpaLinha(){ //e perde ponto
-
-}
-
-
-
 
 
 void gravidade(gameState *game) {
     bool houveMovimento;
     do {
         houveMovimento = false;
-
         for (int coluna = 0; coluna < COLUNA; coluna++) {
             for (int linha = LINHA - 2; linha >= 0; linha--) {
                 if (game->board[linha][coluna] != -1 && game->board[linha + 1][coluna] == -1) {
-                    game->board[linha + 1][coluna] = game->board[linha][coluna];
-                    game->board[linha][coluna] = -1;
+      
+                    game->board[linha + 1][coluna] = game->board[linha][coluna]; //troca o valor de baixo pelo de cima
+                    game->board[linha][coluna] = -1; // coloca o de cima como -1, perdi o valor de cima
                     houveMovimento = true;
                 }
             }
@@ -253,8 +260,11 @@ void gravidade(gameState *game) {
 
 void automatismo(gameState *game){
     varreColunas(game);
-    colocaNovaCorNaPrimeiraLinha(game);
     gravidade(game);
+    if(primeiraLinhaVazia(game) == true){
+        colocaNovaCorNaPrimeiraLinha(game);
+    }
+    
 
 }
 
@@ -283,33 +293,19 @@ void printBoard(gameState *game) {
         printf("\n");
     }
 }
-void carregarBoardTeste(gameState *game) {
-    int boardTeste[LINHA][COLUNA] = {
-        {-1, -1,  1, -1,  2, -1},
-        { 0, -1, -1,  3, -1,  4},
-        {-1,  1, -1, -1,  1, -1},
-        {-1, -1, -1, -1, -1, -1},
-        {-1, -1, -1, -1, -1, -1}
-    };
-
-    for (int i = 0; i < LINHA; i++) {
-        for (int j = 0; j < COLUNA; j++) {
-            game->board[i][j] = boardTeste[i][j];
-        }
-    }
-}
 
 
 int main(){
     srand(time(NULL));
 
     gameState game;
+    memset(&game, -1, sizeof(game));
     tamanho_t tamanho = {800, 600};
-    
+    system("clear");
     j_inicializa(tamanho, "Meu Jogo");
     preencherBoard(&game);
     game.currentPos.x = 0;
-    game.currentPos.y = 0;
+    game.currentPos.y = 3;
     
 
     bool rodando = true;
@@ -323,8 +319,6 @@ int main(){
 
     j_finaliza();
 
-   
-    
 
 
     return 0;

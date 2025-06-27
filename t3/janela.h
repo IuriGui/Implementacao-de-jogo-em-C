@@ -81,7 +81,8 @@ typedef enum {
   T_W = 'w',
   T_A = 'a',
   T_S = 's',
-  T_D = 'd'
+  T_D = 'd',
+  T_Q = 'Q'
   
 } tecla_t;
 
