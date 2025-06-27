@@ -34,6 +34,9 @@ typedef struct aaaa{
     int etapa;
     double tempo;
     double pontuacao;
+    bool terminouJogo;
+    int pecasRetiradas;
+    double tempo_de_jogo;
     int board[LINHA][COLUNA];
 }gameState;
 
@@ -166,6 +169,8 @@ void limpaLinha(gameState *game){
     for(int i = 0; i < COLUNA; i++){
         game->board[linha][i] = -1;
     }
+
+    game->pontuacao -= 2;
 }
 
 
@@ -188,10 +193,23 @@ bool movimentacao(gameState *game){
 
 //automatismo
 
+void tempo(gameState *game){
+    int agora = (int)j_relogio();
+
+    if (agora != (int)game->tempo_de_jogo) {
+        game->tempo_de_jogo = agora;
+        game->tempo += 1;
+    }
+}
+
+
+
 void removerColunas(gameState *game, int col){
     for(int i = 0; i < LINHA; i++){
         game->board[i][col] = -1;
     }
+
+    game->pecasRetiradas += 5;
 }
 
 void addPontos(gameState *game){
@@ -222,6 +240,7 @@ void varreColunas(gameState *game){
         if(verificaSeColunaPodeSerLimpa(game, i)){
             removerColunas(game, i);
             addPontos(game);
+            
         }
     }
 
@@ -250,7 +269,7 @@ void gravidade(gameState *game) {
                 if (game->board[linha][coluna] != -1 && game->board[linha + 1][coluna] == -1) {
       
                     game->board[linha + 1][coluna] = game->board[linha][coluna]; //troca o valor de baixo pelo de cima
-                    game->board[linha][coluna] = -1; // coloca o de cima como -1, perdi o valor de cima
+                    game->board[linha][coluna] = -1; // coloca o de cima como -1, perdi o valor de cima / n importa
                     houveMovimento = true;
                 }
             }
@@ -264,9 +283,13 @@ void automatismo(gameState *game){
     if(primeiraLinhaVazia(game) == true){
         colocaNovaCorNaPrimeiraLinha(game);
     }
+
+    tempo(game);
+
     
 
 }
+
 
 
 //Inicializa
@@ -276,6 +299,8 @@ void preencherBoard(gameState *game){
             game->board[i][j] = rand() % 8;
         }
     }
+    game->tempo = j_relogio();
+    game->pecasRetiradas = 0;
 }
 
 //Desenho tabuleiro
@@ -292,6 +317,13 @@ void printBoard(gameState *game) {
         }
         printf("\n");
     }
+
+
+    printf("\n");
+    printf("\n");
+    printf("00:%d", (int)game->tempo);
+
+
 }
 
 
