@@ -291,6 +291,8 @@ void seAvancaEtapa(gameState *game)
             game->pecasRetiradas = 0;
             game->etapa++;
             game->avancouEtapa = true;
+            game->tempoTotalDeJogo = j_relogio();
+
         }
         else
         {
@@ -339,6 +341,7 @@ void automatismo(gameState *game)
 
     tempo(game);
     seAvancaEtapa(game);
+
 }
 
 // Inicializa
@@ -349,7 +352,7 @@ void preencherBoard(gameState *game)
     {
         for (int j = 0; j < COLUNA; j++)
         {
-            game->board[i][j] = rand() % 4; // game->etapa
+            game->board[i][j] = rand() % (4 + game->etapa); // game->etapa
         }
     }
 }
@@ -369,7 +372,6 @@ void inicializaGame(gameState *game)
     game->tamanhoCelula = (tamanho_t){60, 60};            // 60x60 px por célula
     game->terminouJogo = false;
     game->encerrarPrograma = false;
-    game->avancouEtapa = false;
     game->pecasNecessariasParaAvancar = (LINHA * COLUNA) / 2;
 }
 
@@ -536,9 +538,12 @@ void desenhaTelaDeJogo(gameState *game)
     desenharHUD(game);
     desenhaTabuleiro(game);
     if(game->avancouEtapa){
-        j_texto((ponto_t){200, 400}, (cor_t){1,1,1,1}, "Etapa x foi passada");
+        char msg[50];
+        sprintf(msg, "Etapa %d foi passada", game->etapa);
+        j_texto((ponto_t){200, 400}, (cor_t){1,1,1,1}, msg);
     } 
     j_mostra();
+    
 }
 
 void loopRodada(gameState *game)
