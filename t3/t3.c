@@ -5,23 +5,18 @@
 #include <stdbool.h>
 #include <string.h>
 
+
+#define ARQUIVO_RECORDES "recordes.txt"
 #define LINHA 5
 #define COLUNA 6
 
 /*
  */
 
-typedef enum
-{
-    COR_VERMELHA,
-    COR_VERDE,
-    COR_AZUL,
-    COR_AMARELA,
-    COR_ROXA,
-    COR_LARANJA,
-    COR_ROSA,
-    COR_MARROM
-} colors;
+typedef struct {
+    char nome[5];
+    int pontuacao;
+} Recorde;
 
 typedef struct posAtual
 {
@@ -45,13 +40,23 @@ typedef struct aaaa
     int pecasRetiradas;
     bool terminouJogo;
     bool encerrarPrograma;
-    bool avancouEtapa;
+    char nome[5];
     
     double tempoTotalDeJogo; // n sei
     
 } gameState;
 
 // Utils
+
+Recorde *lerRecordes(int *qtd);
+
+void gravarRecordes(Recorde *lista, int qtd);
+
+void inserirNovoRecorde(Recorde **lista, int *qtd, char *nome, int pontos);
+
+void exibirRecordes( Recorde *lista, int qtd);
+
+void liberarRecordes(Recorde *lista);
 
 int tratarLimite(int valor, int limite, int direcao)
 {
@@ -276,26 +281,26 @@ void varreColunas(gameState *game)
     }
 }
 
+void passagemDeEtapa(gameState *game){
+    game->cronometro = 0;
+    game->pecasRetiradas = 0;
+    game->etapa++;
+    game->tempoTotalDeJogo = j_relogio();
+}
+
 void seAvancaEtapa(gameState *game)
 {
 
-    int tempoLimite = 60;
+    int tempoLimite = 5;
     int minimoPecas = (LINHA * COLUNA) / 2;
+        
+    bool tempoEsgotado = game->cronometro >= tempoLimite;
+    bool atingiuMeta = game->pecasRetiradas >= minimoPecas;
 
-    if (game->cronometro >= tempoLimite)
-    {
-        if (game->pecasRetiradas >= minimoPecas)
-        {
-            
-            game->cronometro = 0;
-            game->pecasRetiradas = 0;
-            game->etapa++;
-            game->avancouEtapa = true;
-            game->tempoTotalDeJogo = j_relogio();
-
-        }
-        else
-        {
+    if (tempoEsgotado || atingiuMeta) {
+        if (atingiuMeta) {
+            passagemDeEtapa(game);
+        } else {
             game->terminouJogo = true;
         }
     }
@@ -462,6 +467,7 @@ cor_t corPorIndice(int corIdx)
     };
     if (corIdx >= 0 && corIdx < 8)
         return cores[corIdx];
+
     return (cor_t){0, 0, 0, 1};
 }
 
@@ -511,8 +517,10 @@ void desenhaTabuleiro(gameState *game)
 }
 
 // saidas
-void telaFim(gameState *game) {
-    j_seleciona_fonte(NULL, 24);
+
+void desenhaTelaFim(gameState *game) {
+
+    //j_seleciona_fonte(NULL, 24);
     ponto_t pos = {350, 200};
     cor_t amarelo = {1.0, 1.0, 0.0, 1.0};
     retangulo_t ret;
@@ -523,25 +531,60 @@ void telaFim(gameState *game) {
     pos.x = (800 - ret.tamanho.largura) / 2;
     j_texto(pos, amarelo, msg);
 
-
     sprintf(msg, "Etapa: %d | Pontos: %d", game->etapa + 1, game->pontuacao);
     ret = j_texto_contorno(msg);
     pos.x = (800 - ret.tamanho.largura) / 2;
     pos.y += 100;
     j_texto(pos, amarelo, msg);
-    j_mostra();
+
 }
+
+void lerApelido(gameState *game) {
+    int maxTamanho = sizeof(game->nome);
+    int len = 0;
+    game->nome[0] = '\0';
+
+    while (true) {
+
+        ponto_t pos = {300, 250};
+        cor_t branco = {1, 1, 1, 1};
+        char texto[100];
+
+        
+        desenhaTelaFim(game);
+
+        sprintf(texto, "Digite seu nome: %s_", game->nome);
+        j_texto(pos, branco, texto);
+        j_mostra();
+
+        if (j_tem_tecla()) {
+            tecla_t t = j_tecla();
+
+            if (t == T_ENTER && len > 0) break;
+
+            if (t == T_BACKSPACE && len > 0) {
+                len--;
+                game->nome[len] = '\0';
+            }
+
+            char c = t;
+            if (c >= 32 && c <= 126 && len < maxTamanho - 1) {
+                game->nome[len++] = c;
+                game->nome[len] = '\0';
+            }
+        }
+
+        j_cochila(0.05);
+    }
+}
+
+
 
 void desenhaTelaDeJogo(gameState *game)
 {
     desenhaComandos();
     desenharHUD(game);
     desenhaTabuleiro(game);
-    if(game->avancouEtapa){
-        char msg[50];
-        sprintf(msg, "Etapa %d foi passada", game->etapa);
-        j_texto((ponto_t){200, 400}, (cor_t){1,1,1,1}, msg);
-    } 
     j_mostra();
     
 }
@@ -557,25 +600,25 @@ void loopRodada(gameState *game)
     }
 }
 
+void recorde(gameState *game){
+
+    int qtd;
+    Recorde *lista = lerRecordes(&qtd);
+    inserirNovoRecorde(&lista, &qtd, game->nome, game->pontuacao);
+    gravarRecordes(lista, qtd);
+    liberarRecordes(lista);
+}
+
+
+
+
 void loopPrincipal(gameState *game){
     while (!game->encerrarPrograma){
         inicializaGame(game);
         loopRodada(game);
         if (game->terminouJogo){
-            telaFim(game);
-            while (true){
-                if (j_tem_tecla()){
-                    tecla_t t = j_tecla();
-                    if (t == T_ESC){
-                        game->encerrarPrograma = true;
-                        break;
-                    }
-                    else if (t == T_ENTER){
-                        break;
-                    }
-                }
-                j_cochila(0.05);
-            }
+            lerApelido(game);
+            recorde(game);
         }
     }
 }
@@ -587,15 +630,13 @@ void telaInicio(){
     cor_t cor = {1,1,1,1};
     ponto_t pos;
     pos.y = 150;
-
     //dá pra pegar o tamanho certinho pra ficar no meio
     retangulo_t bbox = j_texto_contorno(texto);
     pos.x = (800 - bbox.tamanho.largura) / 2 - 5;
-
     sprintf(texto, "Novo Jogo");
     j_texto(pos, cor, texto);
-
 }
+
 
 
 
@@ -608,14 +649,87 @@ int main()
     inicializaGame(&game);
     loopPrincipal(&game);
 
-    // while (true)
-    // {
-    //     telaFim(&game);
-    //     j_mostra();
-    // }
+
     
 
     j_finaliza();
 
     return 0;
+}
+
+
+
+Recorde *lerRecordes(int *qtd) {
+    FILE *f = fopen(ARQUIVO_RECORDES, "r");
+    if (!f) {
+        *qtd = 0;
+        return NULL;
+    }
+
+    Recorde *lista = NULL;
+    *qtd = 0;
+
+    char linha[100];
+    while (fgets(linha, sizeof(linha), f)) {
+        char *sep = strchr(linha, '|');
+        if (!sep) continue;
+
+        *sep = '\0';
+        Recorde r;
+        strncpy(r.nome, linha, 5);
+        r.nome[5 - 1] = '\0';
+        r.pontuacao = atoi(sep + 1);
+
+        lista = realloc(lista, (*qtd + 1) * sizeof(Recorde));
+        lista[*qtd] = r;
+        (*qtd)++;
+    }
+
+    fclose(f);
+    return lista;
+}
+
+void gravarRecordes(Recorde *lista, int qtd) {
+    FILE *f = fopen(ARQUIVO_RECORDES, "w");
+    if (!f) return;
+
+    for (int i = 0; i < qtd; i++) {
+        fprintf(f, "%s|%d\n", lista[i].nome, lista[i].pontuacao);
+    }
+
+    fclose(f);
+}
+
+void inserirNovoRecorde(Recorde **lista, int *qtd, char *nome, int pontos) {
+    *lista = realloc(*lista, (*qtd + 1) * sizeof(Recorde));
+
+    Recorde novo;
+    strncpy(novo.nome, nome, 5);
+    novo.nome[5 - 1] = '\0';
+    novo.pontuacao = pontos;
+
+    (*lista)[*qtd] = novo;
+    (*qtd)++;
+
+    for (int i = 0; i < *qtd - 1; i++) {
+        for (int j = i + 1; j < *qtd; j++) {
+            if ((*lista)[j].pontuacao > (*lista)[i].pontuacao) {
+                Recorde tmp = (*lista)[i];
+                (*lista)[i] = (*lista)[j];
+                (*lista)[j] = tmp;
+            }
+        }
+    }
+}
+
+
+void exibirRecordes(Recorde *lista, int qtd) {
+    printf("===== RECORDES =====\n");
+    for (int i = 0; i < qtd; i++) {
+        printf("%d. %s - %d\n", i + 1, lista[i].nome, lista[i].pontuacao);
+    }
+}
+
+void liberarRecordes(Recorde *lista) {
+    free(lista);
 }
